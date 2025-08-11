@@ -74,7 +74,6 @@ function renderShuffle() {
     anim.classList.add('spin')
     btn.disabled = true
     try {
-      // Idempotent: if we already have session, skip
       const existing = loadState()
       if (existing) { render(); return }
       const payload = { spread: 'three_cards', allow_reversed: true, user_id: 0 }
@@ -162,13 +161,11 @@ function renderFlip(state: SaveState) {
     try {
       const drawn = state.drawn.map(d => ({ index: d.index, ...(d.flipped || {}) }))
       await api('/finish', { session_id: state.session_id, deck_token: state.deck_token, drawn })
+      // Inform bot to show "Отправляем интерпретацию…"
+      const tg = (window as any).Telegram?.WebApp
+      try { tg?.sendData?.(JSON.stringify({ ok: true })) } catch {}
       saveState(null)
-      if ((window as any).Telegram?.WebApp) {
-        (window as any).Telegram.WebApp.close()
-      } else {
-        alert('Готово! Сессию закрыли.')
-        render()
-      }
+      if (tg) tg.close(); else { alert('Готово! Сессию закрыли.'); render() }
     } catch (e) {
       alert('Сеть недоступна. Попробуйте позже.')
     }
