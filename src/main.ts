@@ -54,6 +54,12 @@ function getStartSpread(): Spread {
   return 'three_cards'
 }
 
+function getUserId(): number {
+  const tg = (window as any).Telegram?.WebApp
+  const uid = tg?.initDataUnsafe?.user?.id
+  return typeof uid === 'number' ? uid : 0
+}
+
 async function api<T>(path: string, body: any): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     method: 'POST',
@@ -95,7 +101,7 @@ function renderShuffle() {
       const existing = loadState()
       if (existing) { render(); return }
       const spread = getStartSpread()
-      const payload = { spread, allow_reversed: true, user_id: 0 }
+      const payload = { spread, allow_reversed: true, user_id: getUserId() }
       const resp = await api<StartResp>('/start', payload)
       const state: SaveState = { session_id: resp.session_id, deck_token: resp.deck_token, positions: resp.positions, total_cards: resp.total_cards, drawn: [] }
       saveState(state)
@@ -179,7 +185,7 @@ function renderFlip(state: SaveState) {
   finish.onclick = async () => {
     try {
       const drawn = state.drawn.map(d => ({ index: d.index, ...(d.flipped || {}) }))
-      await api('/finish', { session_id: state.session_id, deck_token: state.deck_token, drawn })
+      await api('/finish', { session_id: state.session_id, deck_token: state.deck_token, drawn, question: '' })
       const tg = (window as any).Telegram?.WebApp
       try { tg?.sendData?.(JSON.stringify({ ok: true })) } catch {}
       saveState(null)
