@@ -1,0 +1,7 @@
+# build artifacts (не коммитим)
+dist/
+# локальные зависимости
+action.yml
+node_modules/
+# TS build info
+*.tsbuildinfo
