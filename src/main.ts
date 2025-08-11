@@ -19,7 +19,7 @@ type SaveState = {
   }>
 }
 
-const API_BASE = '/api/deck'
+const API_BASE = (import.meta as any).env?.VITE_API_BASE || '/api/deck'
 
 function $(sel: string, root: Document | HTMLElement = document) {
   const el = root.querySelector(sel)
@@ -39,14 +39,12 @@ function saveState(state: SaveState | null) {
 }
 
 function getStartSpread(): Spread {
-  // Telegram WebApp: initDataUnsafe.start_param like "spread:three_cards"
   const tg = (window as any).Telegram?.WebApp
   const sp: string | undefined = tg?.initDataUnsafe?.start_param
   if (sp && sp.startsWith('spread:')) {
     const v = sp.slice('spread:'.length)
     if (v === 'card_of_day' || v === 'three_cards' || v === 'love') return v
   }
-  // Fallback from query: ?startapp=spread:three_cards
   const p = new URLSearchParams(location.search)
   const startapp = p.get('startapp') || ''
   if (startapp.startsWith('spread:')) {
