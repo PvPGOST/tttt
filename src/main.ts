@@ -1,5 +1,7 @@
 import './styles.css'
 
+type Spread = 'card_of_day' | 'three_cards' | 'love'
+
 type StartResp = { session_id: string; deck_token: string; positions: string[]; total_cards: number }
 
 type DrawResp = { card_index: number; hidden: true } | { done: true }
@@ -34,6 +36,24 @@ function loadState(): SaveState | null {
 function saveState(state: SaveState | null) {
   if (!state) localStorage.removeItem('tarobot_session')
   else localStorage.setItem('tarobot_session', JSON.stringify(state))
+}
+
+function getStartSpread(): Spread {
+  // Telegram WebApp: initDataUnsafe.start_param like "spread:three_cards"
+  const tg = (window as any).Telegram?.WebApp
+  const sp: string | undefined = tg?.initDataUnsafe?.start_param
+  if (sp && sp.startsWith('spread:')) {
+    const v = sp.slice('spread:'.length)
+    if (v === 'card_of_day' || v === 'three_cards' || v === 'love') return v
+  }
+  // Fallback from query: ?startapp=spread:three_cards
+  const p = new URLSearchParams(location.search)
+  const startapp = p.get('startapp') || ''
+  if (startapp.startsWith('spread:')) {
+    const v = startapp.slice('spread:'.length)
+    if (v === 'card_of_day' || v === 'three_cards' || v === 'love') return v
+  }
+  return 'three_cards'
 }
 
 async function api<T>(path: string, body: any): Promise<T> {
@@ -76,7 +96,8 @@ function renderShuffle() {
     try {
       const existing = loadState()
       if (existing) { render(); return }
-      const payload = { spread: 'three_cards', allow_reversed: true, user_id: 0 }
+      const spread = getStartSpread()
+      const payload = { spread, allow_reversed: true, user_id: 0 }
       const resp = await api<StartResp>('/start', payload)
       const state: SaveState = { session_id: resp.session_id, deck_token: resp.deck_token, positions: resp.positions, total_cards: resp.total_cards, drawn: [] }
       saveState(state)
@@ -161,7 +182,6 @@ function renderFlip(state: SaveState) {
     try {
       const drawn = state.drawn.map(d => ({ index: d.index, ...(d.flipped || {}) }))
       await api('/finish', { session_id: state.session_id, deck_token: state.deck_token, drawn })
-      // Inform bot to show "Отправляем интерпретацию…"
       const tg = (window as any).Telegram?.WebApp
       try { tg?.sendData?.(JSON.stringify({ ok: true })) } catch {}
       saveState(null)
